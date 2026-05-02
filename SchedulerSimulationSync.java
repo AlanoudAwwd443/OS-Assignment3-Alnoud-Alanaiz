@@ -30,7 +30,8 @@ class SharedResources {
     // TODO: Students will add synchronization mechanisms here
     // HINT: Use ReentrantLock for mutual exclusion
     // HINT: Use Semaphore for limiting concurrent access
-    // SHARED RESOURCES - Synchronized with ReentrantLock and Semaphore
+    // SHARED RESOURCES - Synchronized with Reen public static int contextSwitchCount = 0;      // Shared counter - NEEDS PROTECTION!
+    public static int completedProcessCount = 0;   // Shared counter - NEEDS trantLock and Semaphore
     // Fine-grained locks for independent counters (better concurrency)
     public static final ReentrantLock contextSwitchLock = new ReentrantLock();
     public static final ReentrantLock completedProcessLock = new ReentrantLock();
@@ -46,17 +47,53 @@ class SharedResources {
     public static List<String> executionLog = new ArrayList<>();
     
     
-    public static int contextSwitchCount = 0;      // Shared counter - NEEDS PROTECTION!
-    public static int completedProcessCount = 0;   // Shared counter - NEEDS PROTECTION!
-    public static long totalWaitingTime = 0;       // Shared accumulator - NEEDS PROTECTION!
-    public static List<String> executionLog = new ArrayList<>();  // Shared list - NEEDS PROTECTION!
+   
     
     // TODO #1: Add a ReentrantLock(s) here to protect critical sections
     // Example: public static final ReentrantLock lock = new ReentrantLock();
     
     // TODO #2: Add a Semaphore to limit concurrent process execution
     // Example: public static final Semaphore cpuSemaphore = new Semaphore(1);
+    // Method to increment context switch counter
+    public static void incrementContextSwitch() {
+        contextSwitchLock.lock();
+        try {
+            contextSwitchCount++;
+        } finally {
+            contextSwitchLock.unlock();
+        }
+    }
     
+    // Method to increment completed process counter
+    public static void incrementCompletedProcess() {
+        completedProcessLock.lock();
+        try {
+            completedProcessCount++;
+        } finally {
+            completedProcessLock.unlock();
+        }
+    }
+    
+    // Method to add waiting time
+    public static void addWaitingTime(long time) {
+        waitingTimeLock.lock();
+        try {
+            totalWaitingTime += time;
+        } finally {
+            waitingTimeLock.unlock();
+        }
+    }
+    
+    // Method to log execution
+    public static void logExecution(String message) {
+        logLock.lock();
+        try {
+            executionLog.add(message);
+        } finally {
+            logLock.unlock();
+        }
+    }
+}
     // Method to increment context switch counter
     public static void incrementContextSwitch() {
         // TODO: Protect this critical section with a lock

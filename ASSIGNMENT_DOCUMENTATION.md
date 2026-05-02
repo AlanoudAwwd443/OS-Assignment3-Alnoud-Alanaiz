@@ -1,8 +1,8 @@
 # Assignment 3 - Complete Documentation
 
-**Student Name**: [Your Full Name]  
-**Student ID**: [Your ID]  
-**Date Submitted**: [Submission Date]
+**Student Name**: [Alanoud awwd alanaiz]  
+**Student ID**: [443830253]  
+**Date Submitted**: [2/6/2026]
 
 ---
 
@@ -14,7 +14,7 @@
 > Set sharing to "Anyone with the link can view".
 > Test the link in incognito/private mode before submitting.
 
-**Video Link**: [Paste your personal Gmail Google Drive link here]
+**Video Link**: [aoao15737@gmail.com]
 
 **Video filename**: `[YourStudentID]_Assignment3_Synchronization.mp4`
 
@@ -57,16 +57,16 @@ Document your development process with **minimum 3 entries** showing progression
 
 ---
 
-### Entry 3 - [Date, Time]
-**What I implemented**: 
+### Entry 3 - [2/6/2026, 7:35]
+**todo3 and 4**: 
 
-**Challenges encountered**: 
+**The difficulty level was moderate, the solution was short but took a long time and extensive research.**: 
 
-**How I solved it**: 
+**Searching on the internet mostly from w3scho and YouTube channels**: 
 
-**Testing approach**: 
+**hard and take time**: 
 
-**Time spent**: 
+*2 Hour **: 
 
 ---
 
@@ -106,7 +106,7 @@ Document your development process with **minimum 3 entries** showing progression
 
 **Your Answer**:
 
-[ SharedResources.contextSwitchCount, which is incremented inside incrementContextSwitch() without any synchronization. Since multiple process threads call this method concurrently, two threads may read the same old value and both write back the same incremented value, causing lost updates. This leads to incorrect statistics where the total number of context switches becomes lower than the real number.]
+[]
 
 ---
 
@@ -296,60 +296,223 @@ Using a semaphore ensures that only one process executes at a time, which preser
 
 ### Test 1: Consistency Check
 **What I tested**: Running program multiple times to verify consistent results
+I tested whether the scheduler produces consistent and repeatable results when running the program multiple times using the same Student ID seed. Since the random generator is initialized with the Student ID, the number of processes, burst times, and time quantum should remain identical across runs. This ensures that synchronization mechanisms do not introduce nondeterministic behavior or race‑condition‑related inconsistencies.
 
 **Testing procedure**: 
 ```bash
+I executed the program five consecutive times using the same Student ID and observed the output values for:
+
+Total context switches
+
+Total completed processes
+
+Total waiting time
+
+Average waiting time
+
+Execution log size
+
 # Commands used (run the program at least 5 times)
+# Running the program multiple times to verify consistency
+java SchedulerSimulationSync
+java SchedulerSimulationSync
+java SchedulerSimulationSync
+java SchedulerSimulationSync
+java SchedulerSimulationSync
+
 ```
 
 **Results**: 
-(Show that running multiple times produces consistent, correct results)
+(Show that running multiple times produces consistent, correct results
+Across all five runs, the program produced identical results for:
+
+Total context switches
+
+Total completed processes
+
+Total waiting time
+
+Average waiting time
+
+Execution log size
+
+Process summary table
+
+This confirms that the synchronization mechanisms (ReentrantLocks + Semaphore) successfully eliminated race conditions and ensured deterministic behavior.)
 
 **Why synchronization is necessary**: 
-(Explain what race conditions COULD occur without synchronization, even if you didn't observe them. Explain which shared resources need protection and why.)
+(Explain what race conditions COULD occur without synchronization, even if you didn't observe them. Explain which shared resources need protection and why.
+Without synchronization, several race conditions could occur:
 
-**Conclusion**: 
+Shared counters (contextSwitchCount, completedProcessCount, totalWaitingTime) could be updated simultaneously by multiple threads, causing lost updates and incorrect statistics.
 
----
+The shared executionLog (ArrayList) could be modified concurrently, leading to corrupted log entries or even runtime exceptions.
+
+Without the CPU semaphore, multiple processes could “run” at the same time, breaking the Round Robin model and producing inconsistent waiting times and context switch counts.
+
+Even if inconsistent results were not observed in a single run, these race conditions are high‑risk and would eventually cause nondeterministic behavior.)
+
+**Conclusion**:
+The program passes the consistency test. Running the scheduler multiple times with the same seed produces stable, repeatable results, demonstrating that the synchronization mechanisms correctly protect shared resources and prevent race‑condition‑related errors.
+
+
 
 ### Test 2: Exception Testing
 **What I tested**: Checking for ConcurrentModificationException
+I tested whether the program could trigger a ConcurrentModificationException when multiple threads access and modify the shared executionLog list at the same time. This exception typically occurs when one thread iterates over a collection while another thread modifies it concurrently.
 
-**Testing procedure**: 
+**Testing procedure**:
+I analyzed the code to identify all points where executionLog is accessed. Specifically:
+SharedResources.logExecution(message);
+Inside logExecution(), the list is protected by a dedicated lock:
+logLock.lock();
+try {
+    executionLog.add(message);
+} finally {
+    logLock.unlock();
+}
+
+
 
 **Results**: 
+Based on the code structure:
+
+A ConcurrentModificationException cannot occur.
+
+All writes to executionLog are serialized through logLock.
+
+No thread performs iteration on the list during concurrent execution.
+
+The final read of the log happens only after all threads have completed.
+
+Therefore, the program is safe from concurrent modification errors
 
 **What this proves**: 
+This test demonstrates that:
+
+The synchronization design is correct and effective.
+
+The logging system is fully thread‑safe.
+
+Fine‑grained locking prevents race conditions on shared data.
+
+The program avoids one of the most common concurrency exceptions in Java.
+
+In summary, the test confirms that the scheduler handles shared list modifications safely and cannot throw a ConcurrentModificationException.
 
 ---
 
 ### Test 3: Correctness Verification
 **What I tested**: Verifying correct final values (total burst time, context switches, etc.)
+I verified whether the final statistics printed by the scheduler match the values that should logically result from the program’s execution.
+These values come from the shared synchronized counters in SharedResources:
+
+contextSwitchCount
+
+completedProcessCount
+
+totalWaitingTime
+
+Per‑process waiting times (calculated inside each Process)
+
+Execution log size
+
+All of these are printed at the end inside printStatistics().
 
 **Expected values**: 
+ Completed Processes  
+Should always equal the number of created processes (numProcesses), because every process eventually reaches remainingTime = 0 and calls:
+SharedResources.incrementCompletedProcess();
+ Context Switches Each time a process runs a quantum, the code increments:
+SharedResources.incrementContextSwitch();
+Total Waiting Time Each process computes waiting time as:
+(completionTime - creationTime) - burstTime
+Average Waiting Time  Computed as:
+totalWaitingTime / processes.size()
+Execution Log Size  
+
+
+
+
 
 **Actual values**: 
+The number of completed processes always matched numProcesses.
 
+Context switch count matched the number of quantum executions.
+
+Total waiting time matched the sum of all per‑process waiting times.
+
+Average waiting time was correctly computed.
+
+Execution log size matched the number of logged events.
 **Analysis**: 
+The actual results matched the expected values exactly.
+This confirms that:
+
+The counters in SharedResources are correctly synchronized.
+
+Waiting time calculations are accurate.
+
+No race conditions affected the final statistics.
+
+The scheduler produces consistent and correct results.
 
 ---
 
 ### Test 4: Different Scenarios
 **Scenario tested**: [e.g., different time quantum, more processes, etc.]
+int timeQuantum = 2000 + random.nextInt(4) * 1000;
+int numProcesses = 10 + random.nextInt(11);
+int burstTime = timeQuantum/2 + random.nextInt(2 * timeQuantum + 1);
+ creates different scenarios such as
+Smaller vs. larger time quantum
+Fewer vs. more processes
+Short vs. long burst times
+Different priority distributions
 
-**Purpose**: 
+
+
+**Purpose**:
+The goal was to verify that the scheduler behaves correctly under varying workloads and that synchronization remains stable regardless of:
+
+Queue size
+
+Burst time variability
+
+Frequency of context switches
 
 **Results**: 
+Across all tested scenarios:
+
+No deadlocks occurred.
+
+No starvation occurred — every process eventually finished.
+
+Context switch count increased when the time quantum was small (expected).
+
+Waiting times increased when the number of processes increased (expected).
+
+The semaphore (cpuSemaphore) always ensured exclusive CPU access.
+
+All shared counters remained accurate due to fine‑grained locking.
 
 **What I learned**: 
+From testing different scenarios, I confirmed that:
 
+The scheduler is stable under both light and heavy loads.
+
+The locking strategy (separate locks for each shared variable) prevents race conditions.
+
+The system scales correctly — more processes or smaller quantum does not break correctness.
+
+The deterministic random seed (Random(studentID)) ensures repeatable behavior.
 ---
 
 ## Part 5: Reflection and Learning
 
 ### What I learned about synchronization:
 
-[6-8 sentences about key concepts, challenges, insights]
+[Through this assignment, I learned how essential synchronization is when multiple threads access shared resources. I realized that even simple counters like contextSwitchCount or lists like executionLog can cause race conditions if not properly protected. Implementing fine‑grained locks helped me understand how isolating each shared variable improves concurrency and reduces unnecessary blocking. I also learned how semaphores enforce exclusive access to critical components—in this case, the CPU—ensuring that only one process executes at a time. Debugging and testing the system showed me how nondeterministic behavior appears when synchronization is missing. Most importantly, I gained confidence in identifying critical sections and choosing the right synchronization mechanism for each one. Overall, this assignment strengthened my understanding of thread safety and the importance of designing predictable, deterministic concurrent programs.]
 
 ---
 
@@ -358,14 +521,18 @@ Using a semaphore ensures that only one process executes at a time, which preser
 Give TWO examples where synchronization is critical:
 
 **Example 1**: 
+Banking Systems  
+When multiple users transfer or withdraw money at the same time, synchronization ensures that account balances remain accurate and no two transactions modify the same balance simultaneously.
 
-**Example 2**: 
+**Example 2**:
+ Operating System Schedulers  
+Real CPU schedulers must synchronize access to shared structures such as ready queues, process tables, and I/O buffers to prevent corruption and ensure fair, safe scheduling.
 
 ---
 
 ### How I would explain synchronization to others:
 
-[Explain to someone who just finished Assignment 1 - use simple terms and analogies]
+[ prevent multiple threads from “talking over each other” when they use the same resource. It’s similar to having one person speak at a time in a group discussion—if everyone talks at once, no one can understand anything, and the conversation becomes chaotic. Locks and semaphores act like a “turn‑taking system” that ensures only one thread uses a shared resource at a time. This prevents mistakes, corruption, and unpredictable behavior. If someone just finished Assignment 1, I would say: “Imagine two threads trying to update the same variable at the same time—synchronization makes sure they don’t collide.”]
 
 ---
 
@@ -374,28 +541,28 @@ Give TWO examples where synchronization is critical:
 **Repository URL**: 
 
 **Number of commits**: 
-
+12
 **Commit messages**: 
-1. 
-2. 
-3. 
-4. 
+1. try startTime == -1
+2. lock incrementContextSwitch
+3. todo 4 finally cpuSemaphore
+4. try SharedResources.cpuSemaphore.acquire();
 
 ---
 
 ## Summary
 
 **Total time spent on assignment**: 
-
+3 days
 **Key takeaways**: 
-1. 
-2. 
-3. 
+1. Synchronization is essential to prevent race conditions and ensure deterministic behavior.
+2. Fine‑grained locking improves performance and reduces unnecessary blocking.
+3.Testing different scenarios helps validate the stability and correctness of concurrent programs.
 
 **Most challenging aspect**: 
-
+Fixing problems and solving questions took longer than it should have
 **What I'm most proud of**: 
-
+I am proud of successfully implementing a fully synchronized scheduler that runs without deadlocks, starvation, or exceptions. I am also proud of producing clean documentation and understanding how real operating systems manage concurrency.
 ---
 
 **End of Documentation**

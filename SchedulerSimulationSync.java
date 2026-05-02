@@ -126,13 +126,7 @@ class Process implements Runnable {
                 if (startTime == -1) {
                     startTime = System.currentTimeMillis();
                 }
-            }
-        
-        
-        try {
-            if (startTime == -1) {
-                startTime = System.currentTimeMillis();
-            }
+            
             
             // Increment context switch counter
             SharedResources.incrementContextSwitch();
@@ -158,10 +152,13 @@ class Process implements Runnable {
                                     " Quantum progress: " + quantumBar);
                 }
                 System.out.println();
-                
+                finally {
+                SharedResources.cpuSemaphore.release();
+                }
             } catch (InterruptedException e) {
                 System.out.println(Colors.RED + "\n  ✗ " + name + " was interrupted." + Colors.RESET);
             }
+        
             
             remainingTime -= runTime;
             int overallProgress = (int) (((double)(burstTime - remainingTime) / burstTime) * 100);

@@ -106,16 +106,101 @@ Document your development process with **minimum 3 entries** showing progression
 
 **Your Answer**:
 
-[]
+[
+1. Affected Shared Resource
+   public static int contextSwitchCount = 0;
+   2. Why concurrent access is a problem
+      The operation:
+      contextSwitchCount++;
+      
+is not atomic. It actually consists of three separate steps:
+1.Read the current value
+2.Add 1
+3.Write the new value back
+If two or more threads execute this at the same time, they may read the same old value and overwrite each other’s updates.
+   3.Incorrect behavior that may occur
+.Lost increments (some context switches are never counted)
+.Final statistics become incorrect or inconsistent
+.The printed number of context switches becomes lower than the real number
+This is a classic race condition on a shared counter.
+Race Condition 2 — Shared List: executionLog
+1. Affected Shared Resource
+   public static List<String> executionLog = new ArrayList<>();
+2. Why concurrent access is a problem
+ArrayList is not thread‑safe.
+Multiple threads calling:
+executionLog.add(message);
+at the same time can cause:
+.Concurrent writes to the same internal index
+.Resizing the internal array while another thread is writing
+.Corruption of the internal structure
+.Conflicts between reading and writing threads
+3. Incorrect behavior that may occur
+.Missing log entries
+.Duplicated or out‑of‑order entries
+.Corrupted log data
+.Runtime exceptions such as:
+.ArrayIndexOutOfBoundsException
+.ConcurrentModificationException
+This makes the execution log unreliable and unsafe in a multithreaded environment
+]
 
 ---
 
 ### Question 2: Locks vs Semaphores
 **Q**: Explain the difference between ReentrantLock and Semaphore. Where did you use each in your code and why?
-
-**Your Answer**:
-
-[Your answer here - explain your implementation choices]
+Difference Between ReentrantLock and Semaphore
+1. ReentrantLock
+A ReentrantLock is a mutual‑exclusion (mutex) lock that allows only one thread at a time to enter a critical section.
+It is used when you want to protect shared variables from concurrent modification.
+Key properties:
+.Ensures exclusive access
+.Prevents race conditions on shared data
+.A thread can re‑acquire the same lock
+.Provides explicit lock() and unlock() control
+2.Semaphore
+A Semaphore controls access to a resource by allowing a limited number of permits.
+It is used when you want to allow N threads to run concurrently.
+Key properties:
+.Can allow 1 permit (binary semaphore → acts like a lock)
+.Or multiple permits (counting semaphore)
+.Threads must acquire() before entering and release() after finishing
+.Useful for controlling access to shared hardware or limited resources
+Where Each Was Used in the Code and Why
+1. ReentrantLock — Protecting Shared Resources
+You used a ReentrantLock inside the SharedResources class to protect:
+.contextSwitchCount
+.completedProcessCount
+.totalWaitingTime
+.executionLog
+These variables are shared by all process threads, and without a lock, multiple threads could modify them at the same time, causing race conditions.
+Why ReentrantLock was appropriate
+Because these operations must be atomic, and only one thread should update the shared counters or log at a time.
+Example from your implementation:
+lock.lock();
+try {
+    contextSwitchCount++;
+} finally {
+    lock.unlock();
+}
+2. Semaphore — Controlling CPU Access
+   You used a Semaphore (with 1 permit) to simulate the CPU:
+   public static final Semaphore cpuSemaphore = new Semaphore(1);
+Inside Process.run():
+cpuSemaphore.acquire();
+try {
+    // process executes its time quantum
+} finally {
+    cpuSemaphore.release();
+}
+Why Semaphore was appropriate
+Because the CPU can execute only one process at a time.
+Using a semaphore with 1 permit enforces this rule:
+.Only one thread can “use the CPU”
+.Other threads must wait in line
+.Prevents overlapping execution
+.Preserves correct Round Robin behavior
+This models a real CPU more accurately than a lock, because a semaphore represents a limited resource, not just mutual exclusion.
 
 ---
 
@@ -124,7 +209,53 @@ Document your development process with **minimum 3 entries** showing progression
 
 **Your Answer**:
 
-[Your answer here - reference try-finally blocks, lock ordering, etc.]
+[What is Deadlock?
+A deadlock occurs when two or more threads are permanently blocked because each one is waiting for a resource that another thread holds.
+In other words, every thread is waiting, and none of them can continue — the system becomes stuck.
+A deadlock requires four conditions (Coffman conditions):
+.Mutual exclusion
+.Hold and wait
+.No preemption
+.Circular wait
+If all four occur, the program can freeze.
+ Two Deadlock Prevention Techniques
+Technique 1: Using try-finally to Guarantee Resource Release
+One of the most effective ways to prevent deadlock is to ensure that locks or semaphores are always released, even if an exception occurs.cpuSemaphore.acquire();
+try {
+    // critical section
+} finally {
+    cpuSemaphore.release();
+}
+Why this prevents deadlock
+.Even if the process is interrupted or throws an exception, the semaphore is always released.
+.This prevents a situation where a thread acquires the CPU permit but never gives it back.
+Without this, the entire scheduler could freeze because all other threads would wait forever.
+Technique 2: Consistent Lock Ordering
+Another common cause of deadlock is when threads acquire locks in different orders.
+To prevent this, your code uses one consistent locking strategy:
+.All shared counters (contextSwitchCount, completedProcessCount, totalWaitingTime)
+.And the shared list (executionLog)
+are protected using the same lock, or at least locks that are always acquired in the same order.
+Example:
+lock.lock();
+try {
+    executionLog.add(message);
+} finally {
+    lock.unlock();
+}
+Why this prevents deadlock
+.No thread ever holds one lock while waiting for another.
+.No circular wait can occur.
+.All threads follow the same locking order, eliminating the possibility of lock cycles.
+What You Did in Your Code to Prevent Deadlocks:
+1. Used try-finally for the CPU semaphore
+This ensures the semaphore is always released, preventing the CPU from being permanently locked by one thread.
+2. Used consistent locking for shared variables
+All shared data is protected using a single ReentrantLock, or locks that are always acquired in the same order.
+This eliminates circular wait and ensures safe access to shared resources.
+3. Avoided nested locks
+   Your code never acquires multiple locks inside each other, which is a common source of deadlock.
+]
 
 ---
 
@@ -137,7 +268,10 @@ Document your development process with **minimum 3 entries** showing progression
 
 **Your Answer**:
 
-[Your answer here - explain coarse-grained vs fine-grained locking, independence of counters, concurrency implications. Show understanding of when to use each approach. 5-8 sentences expected.]
+[For protecting the three shared counters (contextSwitchCount, completedProcessCount, and totalWaitingTime), I chose to use one lock for all three counters, which is a coarse‑grained locking approach. I selected this design because the counters are updated very quickly, and the overhead of managing multiple locks would not provide a meaningful performance benefit in this simulation. Using a single lock also simplifies the design and eliminates the risk of deadlock caused by inconsistent lock ordering.
+The trade‑off is that coarse‑grained locking reduces concurrency: even though the counters are independent, only one thread can update any of them at a time. In contrast, fine‑grained locking (one lock per counter) would allow multiple threads to update different counters simultaneously, improving parallelism. Since the three counters do not depend on each other, fine‑grained locking technically provides better concurrency, but at the cost of more complex code and a higher chance of programmer error.
+Given the small size and low update frequency of these counters, the coarse‑grained approach offers a safer and simpler design without negatively affecting performance in this context.
+]
 
 ---
 
